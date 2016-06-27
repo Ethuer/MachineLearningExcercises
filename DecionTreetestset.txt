@@ -1,0 +1,9 @@
+Age	Type	subtype	House	Money	Results
+12	A	B	0	1000	YES
+5	A	A	0	2000	YES
+4	B	C	0	1000	YES
+6	B	D	1	1000	YES
+13	B	A	1	2000	NO
+14	B	B	0	1000	NO
+9	A	C	0	2000	NO
+10	A	D	1	2000	NO
