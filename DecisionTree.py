@@ -213,8 +213,11 @@ class observation:
               outPut[AgeuponOutcome] = (self.AgeuponOutcome)
               outPut[SexuponOutcome] = self.SexuponOutcome           
               return outPut
-                     
-
+##
+##       def getVal(string):
+##              
+##                     
+##
 
 
 
@@ -377,9 +380,11 @@ with open('../../ANimalShelterExcercise/train.csv','r') as in_raw,  open('../../
                             parent = ranking[rank-1]
                             child = -1
 
-                     value = key.ranking[number]
-                     parent = key.parent if parent != -1  else  'Root'
-                     child  = key.child if child != -1   else key.classVar
+                     
+
+                     value = vars(key)[number]     
+                     parent = vars(key)[parent]  if parent != -1  else  'Root'
+                     child  = vars(key)[child]  if child != -1   else key.classVar
 
                      # add node here
                      DecTree.addNode(value, rank, parent, child)
