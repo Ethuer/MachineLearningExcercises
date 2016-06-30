@@ -1,5 +1,20 @@
 import csv
 import operator
+import random
+import collections
+import math
+
+compare = lambda x, y: collections.Counter(x) == collections.Counter(y)
+
+def compareList(L1,L2):
+       count = 0
+       equal = True
+       for element in L1:
+              if element != L2[count]:
+                     equal = False
+              count += 1
+       return equal
+                     
 
 
 def populateBreedDict(breedFile):
@@ -49,13 +64,7 @@ def obsLayers(inListOfObservations):
        count = 0
        
        for key in inListOfObservations:
-              #key  =  observation(key)
-              
-              VarList = key.listVars()
-              
-
-
-              
+              VarList = key.listVars()              
               if count == 0:
                      layer = 0
                      count = 1
@@ -103,13 +112,15 @@ def obsLayers(inListOfObservations):
 class Node:
        """Define a node """
 
-
+       
        
        def __init__(self, Layer,Contains,Parent,Child):
               self.Layer = Layer
-              self.Parents = [Parent]
+              self.countObserv = 1
+              self.Parents = Parent
               self.Children = [Child]
               self.Contains = [Contains]
+              self.active = True
               
               
 
@@ -187,7 +198,7 @@ class observation:
                      self.SexuponOutcome = 0
               if 'Unknown' in sex:
                      self.SexuponOutcome = 1
-              else:
+              if 'Neutered' or 'Spayed' in sex:
                      self.SexuponOutcome = 2
 
        def chooseClass(self, altClass):
@@ -229,37 +240,83 @@ class observation:
 class Tree:
        """Decision tree """
 
-##       def createNode(self, observation):
+       def pruneTree(self):
+              for key, values in self.nodeDict.items():
+                     for value in values:
 
-##       def testNode(observation, layer):
-##              if layer in self.nodeDict:
-##                     if observation in nodeDict[layer]:
-##                            print 'out'
+                            # calc gini for downstream nodes to check for current split
+                            DecTree.calcGini(value)
+                            
+                            print 'Layer :', key, ' Node :', value.Contains,'Parent : ',value.Parents, 'Children : ', value.Children,' Count :' ,  value.countObserv
+
+
+       
        def testNode(self, observation, Layer, parent ):
               exists = False
               for element in Layer:
-                     if observation in element.Contains and parent in element.Parents:
+                     if observation in element.Contains and parent == element.Parents : #cmp(parent , element.Parents) != 0 :#compareList(parent , element.Parents) == True :
                             exists = True
               return exists
-              
+
+
+       # addNode checks if node exists by having the same parent
        def addNode(self, observation, layerNumber, parent, child):
+              
               Layer = self.nodeDict[layerNumber]
               exists = self.testNode(observation, Layer,parent)
               if exists == False:
+                     
                      newNode = Node(layerNumber,observation,parent,child)
                      Layer.append(newNode)
+                     
               if exists == True:
                      for element in Layer:
-                            if observation in element.Contains and parent in element.Parents:
+                            
+                            if observation  in  element.Contains and parent ==  element.Parents:#compareList(parent , element.Parents) == True:
                                    if not child in element.Children:
                                           element.Children.append(child)
+                                   element.countObserv +=1
+              return nodecount
 
 
-              return Layer
+##       def combineNodes(self, node, Children ):
+              
+              
 
 
-##       def calcGini(total, classModel):
+       def calcGini(self,node):
+              ChildNodes = self.downstreamNodes(node)
+              total = node.countObserv
+              sumList = []
+##              print len(ChildNodes)
+              for child in ChildNodes:
+                     residual = (total - child.countObserv)
+                     arg1 = (float(child.countObserv)/float(total))* ((float(child.countObserv)/float(total)))
+                     arg2 = (float(residual)/float(total))*(float(residual)/float(total))
+##                     print arg1, arg2
+                     Gini = 1- arg1 - arg2
+                     fraction = (float(child.countObserv) / float(total))
+                     print Gini
+                     sumList.append((Gini*fraction))
+
+              TotalGini = sum(sumList)
+
+              
+##                     print fraction1, fraction
+                     
+##                     sumList.append(fraction)
+##              GiNi = 1-(sum(sumList))
+                        
+##              print GiNi, total
+              
+              return TotalGini
               # GINI = 1-(sumAll[classes] (sqrt(fractionOfRecordsInClass))         
+
+##       def pruneNodes(self):
+##
+##       def joinNodes(self):
+              
+              
 
        def addLayer(self):
               
@@ -276,13 +333,34 @@ class Tree:
               self.nodes = 0
               self.nodeDict = {}
               self.score = 0
+
+
+       def downstreamNodes(self,node):
+              # finds children,  finds gini, removes Nodes
+              newRoot = node.Parents
+              newRoot.append(node.Contains[0])
+              ChildNodes = []
+
+##              print node.Children
+
+              
+              for key, values in self.nodeDict.items():
+                     if key == node.Layer +1 :
+                            for value in values:
+                                   if sorted(node.Parents) == sorted(value.Parents):
+##                                          print sorted(newRoot) , sorted(value.Parents)
+                                          
+                                          
+                                          ChildNodes.append(value)
+                     
+              return ChildNodes
+       
               
 
 
 
 # starting in first row,  create a tree.
 # add 1st node to tree, 
-
 
 with open('../../ANimalShelterExcercise/train.csv','r') as in_raw,  open('../../ANimalShelterExcercise/DogBreeds.tsv' ,'r') as breedRaw:
        infile = csv.reader(in_raw, delimiter = ',')
@@ -317,7 +395,8 @@ with open('../../ANimalShelterExcercise/train.csv','r') as in_raw,  open('../../
               obs.chooseSex(row[6])
               
 
-              LabelList.append(obs)
+              if random.randrange(0,100) == 7:
+                     LabelList.append(obs)
 
               
 ##              inDict[Ident] = [row[0],row[1],row[2],row[3],row[4]]
@@ -333,40 +412,53 @@ with open('../../ANimalShelterExcercise/train.csv','r') as in_raw,  open('../../
        ranking = obsLayers(LabelList)
 
 
-        
+##       # create a tree
+##       for element in LabelList:
+##              print element.classVar
+##              
 
+##
+##
+##
+##
+##       
+##
        # ranking is    kind name sex age breed
        ranking[0] = 'kind'
        ranking[1] = 'name'
        ranking[2] = 'SexuponOutcome'
        ranking[3] = 'AgeuponOutcome'
        ranking[4] = 'breed'
-#ranking.append(-1)
-
-
+###ranking.append(-1)
+##
+##
        for number in range(0,len(ranking)):
               layer = DecTree.addLayer()
-       
-
-##       using an observationList here
-
-       # lets start making layers...
-
-       print 'Building Big tree'
-
-       # follow least variable to most variable approach for now
-
-
-       # populate outside the main loop
-       
-
-
-       
+##       
+##
+####       using an observationList here
+##
+##       # lets start making layers...
+##
+##       print 'Building Big tree'
+##
+##       # follow least variable to most variable approach for now
+##
+##
+##       # populate outside the main loop
+##       
+##
+##
+##       # lets build the biggest tree, then find the coverage per node to cut them loose
+       nodecount = 0
        for key in LabelList:
               rank = 0
               
               
               for number in ranking:
+                     predec = rank
+                     predecessorList = []
+                     predecessorList.append('Root')
                      
                      # load parent and child if applicable,  if not pass -1
                      if rank > 0 and rank < len(ranking)-1 :
@@ -376,40 +468,54 @@ with open('../../ANimalShelterExcercise/train.csv','r') as in_raw,  open('../../
                      elif rank == 0:
                             parent = -1
                             child = ranking[rank+1]
+##                            predecessorList.append('Root')
+                            
                      elif rank == len(ranking)-1:
                             parent = ranking[rank-1]
                             child = -1
 
+                     while(predec > 0):
+                            predec -=1
+                            predecessorList.append(vars(key)[ranking[predec]])
                      
 
 
                      value = vars(key)[number]     
-                     parent = vars(key)[parent]  if parent != -1  else  'Root'
+##                     parent = predecessorList  if parent != -1  else  ['Root']
                      child  = vars(key)[child]  if child != -1   else key.classVar
 
                      # add node here
-                     DecTree.addNode(value, rank, parent, child)
+
+##                     nodeCode = node.getNodeCode()
+              
+                     DecTree.addNode(value, rank,predecessorList, child)
                      
                      rank+=1
-
-
+##            
+##
        print 'Pruning tree'
-       # this one is actually not too big.  I'll assign by ant crawling probabilities
 
+       DecTree.pruneTree()
+##       # this one is actually not too big.  I'll assign by ant crawling probabilities
+##
+##
+##       # impurity measures are consistent, more or less equal in performance,  so I'm implementing GINI
+##       # GINI = 1-(sumAll[classes] (sqrt(fractionOfRecordsInClass))
+##
+##       # get weighted average for any two nodes
+                     
+##
 
-       # impurity measures are consistent, more or less equal in performance,  so I'm implementing GINI
-       # GINI = 1-(sumAll[classes] (sqrt(fractionOfRecordsInClass))
-
-       # get weighted average for any two nodes 
-
-       for key, values in DecTree.nodeDict.items():
-              for value in values:
-                     print value.Layer,value.Parents, value.Contains, value.Children
 
 
 
 
        
+##
+##
+##
+##
+##       
                      
               
               
